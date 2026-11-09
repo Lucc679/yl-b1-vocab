@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>译林版必修一单词检测｜消消乐</title>
+<style>
+*{box-sizing:border-box;font-family:system-ui, sans-serif;}
+body{max-width:1100px;margin:0 auto;padding:16px;background:#f7faff;color:#222;}
+.ctrl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+button{padding:8px 14px;border:none;border-radius:8px;background:#3478f6;color:#fff;cursor:pointer;font-size:15px}
+button.sec{background:#888}
+.info{margin-bottom:12px}
+/* 消消乐卡片 */
+#gameBox{display:grid;grid-template-columns:repeat(auto-fill, minmax(140px,1fr));gap:12px;margin:20px 0}
+.card{padding:18px 10px;border-radius:10px;background:#fff;border:1px solid #cce0ff;text-align:center;cursor:pointer;transition:0.2s}
+.card:hover{background:#e8f1ff}
+.card.selected{background:#3478f6;color:#fff}
+.card.wrong{animation:shake 0.4s}
+.card.remove{opacity:0;transform:scale(0.7);transition:0.3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+/* 默写模式 */
+#quizBox{margin:20px 0}
+.quiz-item{padding:14px;background:#fff;border-radius:10px;margin:10px 0}
+input{width:100%;padding:10px;margin-top:8px;border:1px solid #ccc;border-radius:8px;font-size:16px}
+.right{color:#28a745}
+.wrong{color:#dc3545}
+</style>
+</head>
+<body>
+<h2>译林版高一必修一单词检测（Unit1-4）</h2>
+<div class="ctrl">
+  <select id="unitSel">
+    <option value="1">Unit1 Back to school</option>
+    <option value="2">Unit2 Let's talk teens</option>
+    <option value="3">Unit3 Getting Along with Others</option>
+    <option value="4">Unit4 Looking Good, Feeling Good</option>
+  </select>
+  <button id="btnGame">🎮 单词消消乐</button>
+  <button id="btnQuiz">📝 默写检测</button>
+  <button class="sec" id="btnSpeak">🔊 朗读选中词</button>
+</div>
+<div class="info">得分：<span id="score">0</span>｜剩余：<span id="left">0</span></div>
+<div id="gameBox"></div>
+<div id="quizBox"></div>
+
+<script>
+// 词库，和wordlist.md一一对应
+const wordList = [
+  {en:"potential",phon:"/pəˈtenʃl/",pos:"adj./n.",cn:"潜在的；潜力，可能性",unit:1},
+  {en:"senior",phon:"/ˈsiːniə(r)/",pos:"adj./n.",cn:"中学的；级别高的；年长的；高年级学生",unit:1},
+  {en:"junior",phon:"/ˈdʒuːniə(r)/",pos:"adj./n.",cn:"初级的；年少的；低年级学生",unit:1},
+  {en:"path",phon:"/pɑːθ/",pos:"n.",cn:"道路，小路；成功途径",unit:1},
+  {en:"positive",phon:"/ˈpɒzətɪv/",pos:"adj.",cn:"积极乐观的；正面的",unit:1},
+  {en:"opportunity",phon:"/ˌɒpəˈtjuːnəti/",pos:"n.",cn:"机会，时机",unit:1},
+  {en:"challenge",phon:"/ˈtʃælɪndʒ/",pos:"v./n.",cn:"挑战；质疑",unit:1},
+  {en:"facility",phon:"/fəˈsɪləti/",pos:"n.",cn:"设施，设备；场所",unit:1},
+  {en:"attitude",phon:"/ˈætɪtjuːd/",pos:"n.",cn:"态度，看法",unit:1},
+  {en:"goal",phon:"/ɡəʊl/",pos:"n.",cn:"目标；进球得分",unit:1},
+  {en:"resource",phon:"/rɪˈsɔːs/",pos:"n.",cn:"资源，财力",unit:1},
+  {en:"material",phon:"/məˈtɪəriəl/",pos:"n./adj.",cn:"材料；素材；物质的",unit:1},
+  {en:"exchange",phon:"/ɪksˈtʃeɪndʒ/",pos:"v./n.",cn:"交换；交流；兑换",unit:1},
+  {en:"host",phon:"/həʊst/",pos:"n./v.",cn:"东道主；主持人；主办",unit:1},
+  {en:"tough",phon:"/tʌf/",pos:"adj.",cn:"艰难的；坚强的；坚固的",unit:1},
+  {en:"alarm",phon:"/əˈlɑːm/",pos:"n./v.",cn:"闹钟；警报；使惊恐",unit:1},
+  {en:"option",phon:"/ˈɒpʃn/",pos:"n.",cn:"选择；选修课",unit:1},
+
+  {en:"teenager",phon:"/ˈtiːneɪdʒə(r)/",pos:"n.",cn:"青少年",unit:2},
+  {en:"struggle",phon:"/ˈstrʌɡl/",pos:"v./n.",cn:"奋斗；挣扎；努力",unit:2},
+  {en:"generous",phon:"/ˈdʒenərəs/",pos:"adj.",cn:"慷慨的；大方的",unit:2},
+  {en:"selfish",phon:"/ˈselfɪʃ/",pos:"adj.",cn:"自私的",unit:2},
+  {en:"balance",phon:"/ˈbæləns/",pos:"n./v.",cn:"平衡；权衡",unit:2},
+  {en:"limit",phon:"/ˈlɪmɪt/",pos:"n./v.",cn:"界限；限制",unit:2},
+  {en:"wisdom",phon:"/ˈwɪzdəm/",pos:"n.",cn:"智慧",unit:2},
+  {en:"independent",phon:"/ˌɪndɪˈpendənt/",pos:"adj.",cn:"独立的，自主的",unit:2},
+  {en:"cooperate",phon:"/kəʊˈɒpəreɪt/",pos:"v.",cn:"合作，协作",unit:2},
+  {en:"eager",phon:"/ˈiːɡə(r)/",pos:"adj.",cn:"渴望的，热切的",unit:2},
+  {en:"account",phon:"/əˈkaʊnt/",pos:"n./v.",cn:"账户；描述；认为",unit:2},
+  {en:"view",phon:"/vjuː/",pos:"n./v.",cn:"观点；视野；看待",unit:2},
+
+  {en:"awkward",phon:"/ˈɔːkwəd/",pos:"adj.",cn:"尴尬的；笨拙的；难对付的",unit:3},
+  {en:"original",phon:"/əˈrɪdʒənl/",pos:"adj.",cn:"起初的；独创的；原作的",unit:3},
+  {en:"sight",phon:"/saɪt/",pos:"n.",cn:"视力；视野；看见",unit:3},
+  {en:"concern",phon:"/kənˈsɜːn/",pos:"v./n.",cn:"担心；涉及；忧虑",unit:3},
+  {en:"desire",phon:"/dɪˈzaɪə(r)/",pos:"v./n.",cn:"渴望；愿望",unit:3},
+  {en:"target",phon:"/ˈtɑːɡɪt/",pos:"n./v.",cn:"目标；靶子；面向",unit:3},
+
+  {en:"stress",phon:"/stres/",pos:"n./v.",cn:"压力；强调",unit:4},
+  {en:"recover",phon:"/rɪˈkʌvə(r)/",pos:"v.",cn:"恢复；康复",unit:4},
+  {en:"diet",phon:"/ˈdaɪət/",pos:"n./v.",cn:"日常饮食；节食",unit:4},
+  {en:"judge",phon:"/dʒʌdʒ/",pos:"v./n.",cn:"判断；法官",unit:4},
+  {en:"schedule",phon:"/ˈʃedjuːl/",pos:"n./v.",cn:"日程表；安排",unit:4},
+  {en:"fitness",phon:"/ˈfɪtnəs/",pos:"n.",cn:"健康；健身",unit:4},
+  {en:"energy",phon:"/ˈenədʒi/",pos:"n.",cn:"精力；能量",unit:4}
+];
+
+const gameBox = document.getElementById('gameBox');
+const quizBox = document.getElementById('quizBox');
+const scoreEl = document.getElementById('score');
+const leftEl = document.getElementById('left');
+const unitSel = document.getElementById('unitSel');
+let score = 0;
+let selectedCard = null;
+let gameWords = [];
+let quizWords = [];
+
+// 洗牌
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]]
+  }
+  return a;
+}
+function getUnitWords(){
+  const u = +unitSel.value;
+  return wordList.filter(w=>w.unit === u);
+}
+
+// ========== 消消乐模式 ==========
+function startGame(){
+  score = 0; selectedCard = null;
+  scoreEl.textContent = score;
+  gameBox.innerHTML = '';
+  quizBox.innerHTML = '';
+  const uw = getUnitWords();
+  gameWords = [];
+  uw.forEach(w=>{
+    gameWords.push({type:'en', data:w, txt:w.en});
+    gameWords.push({type:'cn', data:w, txt:w.cn});
+  })
+  gameWords = shuffle(gameWords);
+  leftEl.textContent = uw.length;
+
+  gameWords.forEach((item,idx)=>{
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.dataset.idx = idx;
+    div.innerText = item.txt;
+    div.onclick = ()=>clickCard(idx);
+    gameBox.appendChild(div);
+  })
+}
+function clickCard(idx){
+  const item = gameWords[idx];
+  const cards = document.querySelectorAll('.card');
+  if(cards[idx].classList.contains('remove')) return;
+  if(!selectedCard){
+    selectedCard = idx;
+    cards[idx].classList.add('selected');
+  }else{
+    const sItem = gameWords[selectedCard];
+    // 匹配判断：一个英文、一个中文，对应同一个单词对象
+    if(sItem.data === item.data && sItem.type !== item.type){
+      // ✅ 匹配成功
+      cards[selectedCard].classList.add('remove');
+      cards[idx].classList.add('remove');
+      score +=1;
+      scoreEl.textContent = score;
+      leftEl.textContent = +leftEl.textContent -1;
+    }else{
+      // ❌ 匹配失败，抖动
+      cards[selectedCard].classList.add('wrong');
+      cards[idx].classList.add('wrong');
+      setTimeout(()=>{
+        cards[selectedCard].classList.remove('wrong');
+        cards[idx].classList.remove('wrong');
+      },400)
+    }
+    cards[selectedCard].classList.remove('selected');
+    selectedCard = null;
+  }
+}
+
+// ========== 默写检测 ==========
+function startQuiz(){
+  score=0;
+  gameBox.innerHTML='';
+  quizBox.innerHTML='';
+  const uw = getUnitWords();
+  quizWords = shuffle(uw);
+  leftEl.textContent = quizWords.length;
+  scoreEl.textContent = 0;
+  quizWords.forEach((w,i)=>{
+    const div = document.createElement('div');
+    div.className = 'quiz-item';
+    div.innerHTML = `
+      <div>${w.en} ${w.phon} ${w.pos}</div>
+      <input type="text" placeholder="输入中文释义" data-i="${i}">
+      <div class="ans" style="margin-top:6px;display:none">正确：${w.cn}</div>
+    `
+    quizBox.appendChild(div);
+  })
+  quizBox.querySelectorAll('input').forEach(inp=>{
+    inp.onchange = ()=>{
+      const i = +inp.dataset.i;
+      const ansDom = inp.nextElementSibling;
+      if(inp.value.trim() === quizWords[i].cn){
+        inp.classList.add('right');
+        score++;
+      }else{
+        inp.classList.add('wrong');
+        ansDom.style.display='block';
+      }
+      scoreEl.textContent = score;
+    }
+  })
+}
+// 朗读
+document.getElementById('btnSpeak').onclick = ()=>{
+  const u = getUnitWords();
+  const w = u[Math.floor(Math.random()*u.length)];
+  const utter = new SpeechSynthesisUtterance(w.en);
+  utter.lang = 'en-US';
+  speechSynthesis.speak(utter);
+}
+document.getElementById('btnGame').onclick = startGame;
+document.getElementById('btnQuiz').onclick = startQuiz;
+unitSel.onchange = ()=>{gameBox.innerHTML='';quizBox.innerHTML='';score=0;scoreEl.textContent=0;leftEl.textContent=0}
+</script>
+</body>
+</html>
